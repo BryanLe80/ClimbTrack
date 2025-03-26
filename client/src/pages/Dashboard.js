@@ -15,20 +15,26 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  MenuItem
+  MenuItem,
+  IconButton
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
   Timer as TimerIcon,
   LocationOn as LocationIcon,
   EmojiEvents as TrophyIcon,
-  PlayArrow as StartIcon
+  PlayArrow as StartIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import axios from 'axios';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, addMonths, subMonths } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 
 function Dashboard({ user }) {
+  const navigate = useNavigate();
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [dashboardData, setDashboardData] = useState({
     recentSessions: [],
     totalSessions: 0,
@@ -42,7 +48,6 @@ function Dashboard({ user }) {
     type: 'indoor',
     duration: 60,
     energyLevel: 3,
-    quality: 3,
     notes: ''
   });
 
@@ -71,37 +76,8 @@ function Dashboard({ user }) {
     fetchDashboardData();
   }, []);
 
-  const handleStartSession = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5001/api/sessions', {
-        ...newSession,
-        date: new Date()
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      // Update stats with new session
-      setDashboardData(prev => ({
-        ...prev,
-        totalSessions: prev.totalSessions + 1,
-        totalTime: prev.totalTime + newSession.duration,
-        recentSessions: [response.data, ...prev.recentSessions]
-      }));
-      
-      setOpenSessionDialog(false);
-      setNewSession({
-        location: '',
-        type: 'indoor',
-        duration: 60,
-        energyLevel: 3,
-        quality: 3,
-        notes: ''
-      });
-    } catch (err) {
-      console.error('Error starting session:', err);
-      setError('Failed to start session');
-    }
+  const handleStartSession = () => {
+    navigate('/sessions', { state: { openStartDialog: true } });
   };
 
   const handleChange = (e) => {
@@ -110,6 +86,14 @@ function Dashboard({ user }) {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handlePreviousMonth = () => {
+    setCurrentDate(prevDate => subMonths(prevDate, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prevDate => addMonths(prevDate, 1));
   };
 
   if (loading) {
@@ -141,10 +125,9 @@ function Dashboard({ user }) {
     }
   };
 
-  // Get the days in the current month
-  const today = new Date('2024-03-24'); // Set to March 2024 to match test data
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
+  // Update calendar data to use currentDate instead of today
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
   
   // Create calendar data
   const firstDay = new Date(currentYear, currentMonth, 1);
@@ -197,7 +180,7 @@ function Dashboard({ user }) {
               variant="contained"
               color="primary"
               startIcon={<StartIcon />}
-              onClick={() => setOpenSessionDialog(true)}
+              onClick={handleStartSession}
               size="large"
             >
               Start Session
@@ -213,7 +196,7 @@ function Dashboard({ user }) {
                 <TrendingUpIcon color="primary" sx={{ mr: 1 }} />
                 <Typography variant="h6">Routes</Typography>
               </Box>
-              <Typography variant="h4">{dashboardData.recentSessions.length}</Typography>
+              <Typography variant="h4">In progress... (track routes during session then update here)</Typography>
               <Typography color="text.secondary">
                 {dashboardData.recentSessions.length} completed
               </Typography>
@@ -230,7 +213,7 @@ function Dashboard({ user }) {
               </Box>
               <Typography variant="h4">{Math.round(dashboardData.totalTime / 60)}h</Typography>
               <Typography color="text.secondary">
-                Total climbing time
+                Of total climbing time
               </Typography>
             </CardContent>
           </Card>
@@ -264,7 +247,7 @@ function Dashboard({ user }) {
                   : 0}%
               </Typography>
               <Typography color="text.secondary">
-                Completion rate
+                Completion rate // TODO: Add goal setting for user, place this goal here. using completion rate for now; 
               </Typography>
             </CardContent>
           </Card>
@@ -281,12 +264,32 @@ function Dashboard({ user }) {
             <CardHeader 
               title="Climbing Calendar" 
               sx={{ color: 'white' }}
+              align="center"
             />
             <CardContent>
               <Box sx={{ mb: 2, maxWidth: '800px', margin: '0 auto' }}>
-                <Typography variant="h6" sx={{ color: 'white', mb: 1 }}>
-                  {format(today, 'MMMM yyyy')}
-                </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  mb: 2 
+                }}>
+                  <IconButton 
+                    onClick={handlePreviousMonth}
+                    sx={{ color: 'white' }}
+                  >
+                    <ChevronLeftIcon />
+                  </IconButton>
+                  <Typography variant="h6" sx={{ color: 'white' }}>
+                    {format(currentDate, 'MMMM yyyy')}
+                  </Typography>
+                  <IconButton 
+                    onClick={handleNextMonth}
+                    sx={{ color: 'white' }}
+                  >
+                    <ChevronRightIcon />
+                  </IconButton>
+                </Box>
                 <Grid container spacing={0} sx={{ width: '100%' }}>
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                     <Grid item xs={12/7} key={day} sx={{ textAlign: 'center', mb: 0.5 }}>
@@ -303,7 +306,7 @@ function Dashboard({ user }) {
                         <Grid item xs={12/7} key={`${weekIndex}-${dayIndex}`}>
                           <Box
                             sx={{
-                              pt: '70%', // Reduced from 100% to make cells shorter
+                              pt: '70%',
                               position: 'relative',
                               bgcolor: 'transparent'
                             }}
@@ -319,15 +322,12 @@ function Dashboard({ user }) {
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  bgcolor: dashboardData.recentSessions.find(
-                                    session => isSameDay(new Date(session.date), date)
-                                  )
-                                    ? getSessionColor(
-                                        dashboardData.recentSessions.find(
-                                          session => isSameDay(new Date(session.date), date)
-                                        ).quality
-                                      )
-                                    : '#444444',
+                                  bgcolor: (() => {
+                                    const session = dashboardData.recentSessions.find(
+                                      s => isSameDay(new Date(s.date), date)
+                                    );
+                                    return session ? getSessionColor(session.quality) : '#444444';
+                                  })(),
                                   borderRadius: 1,
                                   m: 0.5,
                                   cursor: 'pointer',
@@ -456,24 +456,6 @@ function Dashboard({ user }) {
             {[1, 2, 3, 4, 5].map((level) => (
               <MenuItem key={level} value={level}>
                 {level}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            margin="dense"
-            name="quality"
-            label="Session Quality"
-            select
-            fullWidth
-            value={newSession.quality}
-            onChange={handleChange}
-          >
-            {[1, 2, 3, 4, 5].map((level) => (
-              <MenuItem key={level} value={level}>
-                {level} - {level === 1 ? 'Poor' : 
-                          level === 2 ? 'Below Average' : 
-                          level === 3 ? 'Average' : 
-                          level === 4 ? 'Good' : 'Excellent'}
               </MenuItem>
             ))}
           </TextField>

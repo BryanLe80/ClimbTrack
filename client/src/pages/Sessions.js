@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   Container,
@@ -20,19 +21,28 @@ import {
   DialogActions,
   TextField,
   MenuItem,
-  Button
+  Button,
+  Fab
 } from '@mui/material';
-import { Edit as EditIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
 
-
-
 function Sessions() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
+  const [startDialogOpen, setStartDialogOpen] = useState(location.state?.openStartDialog || false);
+  const [newSession, setNewSession] = useState({
+    location: '',
+    type: 'indoor',
+    duration: 60,
+    energyLevel: 3,
+    notes: ''
+  });
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -103,14 +113,74 @@ function Sessions() {
     }
   };
 
+  const handleStartSession = () => {
+    setStartDialogOpen(true);
+  };
+
+  const handleStartDialogClose = () => {
+    setStartDialogOpen(false);
+    setNewSession({
+      location: '',
+      type: 'indoor',
+      duration: 60,
+      energyLevel: 3,
+      notes: ''
+    });
+  };
+
+  const handleNewSessionChange = (e) => {
+    const { name, value } = e.target;
+    setNewSession(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleDeleteSession = async (sessionId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`http://localhost:5001/api/sessions/${sessionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Update the sessions list by removing the deleted session
+      setSessions(prevSessions => prevSessions.filter(session => session._id !== sessionId));
+    } catch (err) {
+      console.error('Error deleting session:', err);
+      setError('Failed to delete session');
+    }
+  };
+
+  const handleStartSessionSubmit = () => {
+    navigate('/active-session', { 
+      state: { 
+        sessionData: {
+          ...newSession,
+          date: new Date()
+        }
+      }
+    });
+    handleStartDialogClose();
+  };
+
   if (loading) return <Typography>Loading...</Typography>;
   if (error) return <Typography color="error">{error}</Typography>;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Climbing Sessions
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" gutterBottom>
+          Climbing Sessions
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={handleStartSession}
+        >
+          Start Session
+        </Button>
+      </Box>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -168,13 +238,22 @@ function Sessions() {
                 </TableCell>
                 <TableCell>{session.notes}</TableCell>
                 <TableCell>
-                  <IconButton 
-                    onClick={() => handleEditClick(session)}
-                    size="small"
-                    color="primary"
-                  >
-                    <EditIcon />
-                  </IconButton>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton 
+                      onClick={() => handleEditClick(session)}
+                      size="small"
+                      color="primary"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton 
+                      onClick={() => handleDeleteSession(session._id)}
+                      size="small"
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -269,6 +348,78 @@ function Sessions() {
           <Button onClick={handleEditClose}>Cancel</Button>
           <Button onClick={handleEditSave} variant="contained" color="primary">
             Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Start Session Dialog */}
+      <Dialog open={startDialogOpen} onClose={handleStartDialogClose}>
+        <DialogTitle>Start New Session</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            name="location"
+            label="Location"
+            type="text"
+            fullWidth
+            value={newSession.location}
+            onChange={handleNewSessionChange}
+          />
+          <TextField
+            margin="dense"
+            name="type"
+            label="Type"
+            select
+            fullWidth
+            value={newSession.type}
+            onChange={handleNewSessionChange}
+          >
+            <MenuItem value="indoor">Indoor</MenuItem>
+            <MenuItem value="outdoor">Outdoor</MenuItem>
+          </TextField>
+          <TextField
+            margin="dense"
+            name="duration"
+            label="Duration (minutes)"
+            type="number"
+            fullWidth
+            value={newSession.duration}
+            onChange={handleNewSessionChange}
+          />
+          <TextField
+            margin="dense"
+            name="energyLevel"
+            label="Energy Level"
+            select
+            fullWidth
+            value={newSession.energyLevel}
+            onChange={handleNewSessionChange}
+          >
+            {[1, 2, 3, 4, 5].map((level) => (
+              <MenuItem key={level} value={level}>
+                {level} - {level === 1 ? 'Very Low' : 
+                          level === 2 ? 'Low' : 
+                          level === 3 ? 'Medium' : 
+                          level === 4 ? 'High' : 'Very High'}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            margin="dense"
+            name="notes"
+            label="Notes"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={newSession.notes}
+            onChange={handleNewSessionChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleStartDialogClose}>Cancel</Button>
+          <Button onClick={handleStartSessionSubmit} variant="contained" color="primary">
+            Start Session
           </Button>
         </DialogActions>
       </Dialog>

@@ -65,7 +65,7 @@ const Register = () => {
       localStorage.setItem('token', response.data.token);
       // Set the default Authorization header for future requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      navigate('/dashboard'); // Redirect to dashboard page after successful registration
+      navigate('/login'); // Redirect to login page after successful registration
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred during registration');
     } finally {

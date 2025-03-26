@@ -1,29 +1,33 @@
 const express = require('express');
 const router = express.Router();
-const Route = require('../models/Route');
-const Session = require('../models/Session');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 // Get dashboard data
 router.get('/', auth, async (req, res) => {
   try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     // Get user's routes
-    const routes = await Route.find({ user: req.user.userId });
+    const routes = user.routes;
     const totalRoutes = routes.length;
     const completedRoutes = routes.filter(route => route.completed).length;
 
     // Get user's sessions
-    const sessions = await Session.find({ user: req.user.userId })
-      .sort({ date: -1 })
-      .limit(5);
+    const sessions = user.sessions
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 5);
     
-    const totalSessions = await Session.countDocuments({ user: req.user.userId });
+    const totalSessions = user.sessions.length;
     const totalTime = sessions.reduce((acc, session) => acc + session.duration, 0);
 
     // Get recent routes
-    const recentRoutes = await Route.find({ user: req.user.userId })
-      .sort({ createdAt: -1 })
-      .limit(5);
+    const recentRoutes = routes
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 5);
 
     res.json({
       totalRoutes,

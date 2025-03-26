@@ -1,10 +1,21 @@
 {
+  "name": "climbtrack",
+  "version": "1.0.0",
+  "description": "Rock Climbing Workout Tracker",
+  "scripts": {
+    "dev": "start-dev.bat",
+    "client": "cd client && npm start",
+    "server": "cd server && npm run dev"
+  },
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.8",
     "@mui/material": "^6.4.8",
     "bcryptjs": "^3.0.2",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "spotify-web-api-js": "^1.5.2"
   }
 }

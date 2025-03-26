@@ -17,6 +17,7 @@ import RouteLog from './pages/RouteLog';
 import Sessions from './pages/Sessions';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
+import ActiveSession from './pages/ActiveSession';
 
 // Create theme
 const theme = createTheme({
@@ -159,6 +160,11 @@ function App() {
               <Route path="/sessions" element={
                 <ProtectedRoute>
                   <Sessions user={user} />
+                </ProtectedRoute>
+              } />
+              <Route path="/active-session" element={
+                <ProtectedRoute>
+                  <ActiveSession />
                 </ProtectedRoute>
               } />
               <Route path="/profile" element={
